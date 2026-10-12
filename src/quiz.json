@@ -3894,7 +3894,7 @@
     },
     {
       "id": 279,
-      "question": "What does git stash do?",
+      "question": "You need to switch branches but have unfinished, uncommitted work. What does running git stash do with it?",
       "options": {
         "A": "Permanently deletes uncommitted changes to clean working directory",
         "B": "Temporarily saves uncommitted changes for later reapplication",
@@ -4679,7 +4679,7 @@
     },
     {
       "id": 334,
-      "question": "When should you use aria-label vs aria-labelledby?",
+      "question": "An icon-only RemoveItem button has no visible text, while a dialog already shows a visible title. Which statement about aria-label and aria-labelledby is correct?",
       "options": {
         "A": "aria-label for visible text, aria-labelledby for hidden",
         "B": "aria-label for string labels, aria-labelledby to reference existing element",
