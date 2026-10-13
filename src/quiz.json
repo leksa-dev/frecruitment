@@ -4751,6 +4751,118 @@
       "topic": "React - State Batching",
       "difficulty": "hard",
       "whyImportant": "Important for understanding your addToCart implementation performance"
+    },
+    {
+      "id": 339,
+      "question": "What does this code log?\nfunction outer() { let count = 0; return function () { count++; return count; }; }\nconst a = outer();\nconst b = outer();\na(); a();\nconsole.log(b());",
+      "options": {
+        "A": "undefined",
+        "B": "3",
+        "C": "1",
+        "D": "2"
+      },
+      "correctAnswer": "C",
+      "explanation": "Every call to outer() creates a new scope with its own `count` variable. The function stored in `a` closes over one `count` and the function in `b` closes over a different one. Calling a() twice changes only a's counter, so b() returns 1. Answering 3 assumes the two functions share one variable.",
+      "topic": "JavaScript - Closures",
+      "difficulty": "medium"
+    },
+    {
+      "id": 340,
+      "question": "What happens when this code runs?\nfunction outer(x) { return function inner() { return x; }; }\nconst f = outer(5);\nconsole.log(x);",
+      "options": {
+        "A": "It throws a ReferenceError, because x is not defined in this scope",
+        "B": "It logs the inner function, because x refers to it",
+        "C": "It logs undefined, because outer has already returned",
+        "D": "It logs 5, because the closure exposes x globally"
+      },
+      "correctAnswer": "A",
+      "explanation": "`x` is a parameter of outer and exists only inside that function's scope. A closure lets the inner function keep using `x`, but it does not put `x` into the outer or global scope. Trying to read `x` from outside throws a ReferenceError instead of logging undefined.",
+      "topic": "JavaScript - Closures",
+      "difficulty": "easy"
+    },
+    {
+      "id": 341,
+      "question": "What happens when outer() is called?\nfunction outer() {\n  function inner() { const secret = 1; }\n  inner();\n  console.log(secret);\n}",
+      "options": {
+        "A": "It throws a ReferenceError, because outer cannot see inner's scope",
+        "B": "It logs 1, because inner() has already run",
+        "C": "It logs undefined, because secret was hoisted into outer",
+        "D": "It logs 1 only if secret is declared with var instead of const"
+      },
+      "correctAnswer": "A",
+      "explanation": "The scope chain only goes one way: inner scopes can read outer scopes, but outer scopes can never read inner ones. `secret` belongs to inner's scope, so reading it in outer throws a ReferenceError. Using var would not change this, because var is function-scoped and would still belong to inner.",
+      "topic": "JavaScript - Scopes",
+      "difficulty": "medium"
+    },
+    {
+      "id": 342,
+      "question": "What does this code log?\nfunction make() {\n  let msg = 'a';\n  const log = () => console.log(msg);\n  msg = 'b';\n  return log;\n}\nmake()();",
+      "options": {
+        "A": "'a'",
+        "B": "'b'",
+        "C": "It throws a ReferenceError",
+        "D": "undefined"
+      },
+      "correctAnswer": "B",
+      "explanation": "A closure keeps a reference to the variable itself, not a copy of its value from when the function was created. `msg` is changed to 'b' before `log` runs, so `log` reads the latest value, 'b'. Answering 'a' comes from the common idea that a closure takes a snapshot.",
+      "topic": "JavaScript - Closures",
+      "difficulty": "hard"
+    },
+    {
+      "id": 343,
+      "question": "In `function load(url) { fetch(url).then(() => console.log(url)); }`, the `.then` callback runs after `load` has returned. Why can it still read `url`?",
+      "options": {
+        "A": "fetch copies its arguments into the global scope until the request finishes",
+        "B": "Arrow functions take url from the scope where they are finally executed",
+        "C": "Promises pause load until the callback finishes, so the scope is still active",
+        "D": "The callback closes over load's scope, which stays alive while the callback references it"
+      },
+      "correctAnswer": "D",
+      "explanation": "The arrow function is defined inside `load`, so it closes over load's scope, including `url`. JavaScript keeps that scope alive as long as the callback can still reach it, even after `load` returns. Promises do not pause the outer function: `load` finishes right away, and the callback runs later.",
+      "topic": "JavaScript - Closures",
+      "difficulty": "medium"
+    },
+    {
+      "id": 344,
+      "question": "What happens to an outer function's local variables after it returns an inner function that uses them?",
+      "options": {
+        "A": "They stay in memory as long as the inner function can still be reached",
+        "B": "They are copied into the inner function as fixed, read-only values",
+        "C": "They are always freed as soon as the outer function returns",
+        "D": "They are moved to the global scope so the inner function can find them"
+      },
+      "correctAnswer": "A",
+      "explanation": "JavaScript keeps the outer variables alive because the inner function still references them. Once nothing can reach that inner function, the variables can be garbage-collected. They are not frozen copies: the inner function can still read and change them, and they never become global.",
+      "topic": "JavaScript - Closures",
+      "difficulty": "hard"
+    },
+    {
+      "id": 345,
+      "question": "`let user = 'Ann'; function greet() { console.log(user); }` Does `greet` use a closure?",
+      "options": {
+        "A": "Yes, it reads a variable defined outside its own scope",
+        "B": "No, closures exist only for functions nested inside other functions",
+        "C": "No, global variables are looked up dynamically, not through a closure",
+        "D": "Only if greet is returned from another function or passed as a callback"
+      },
+      "correctAnswer": "A",
+      "explanation": "Any function that reads a variable from an outer scope uses a closure, and the global scope counts as an outer scope too. Nesting a function inside another and returning it is the most common case, but it is not required. That is why even very simple JavaScript code relies on closures.",
+      "topic": "JavaScript - Closures",
+      "difficulty": "easy"
+    },
+    {
+      "id": 346,
+      "question": "What does this code log?\nlet x = 'global';\nfunction show() { console.log(x); }\nfunction run() { let x = 'local'; show(); }\nrun();",
+      "options": {
+        "A": "It throws a ReferenceError",
+        "B": "'global'",
+        "C": "'local'",
+        "D": "undefined"
+      },
+      "correctAnswer": "B",
+      "explanation": "A function's outer scope depends on where the function is defined, not where it is called. `show` was defined at the top level, so its closure points to the global `x`, and the `x` inside `run` does not affect it. Answering 'local' means confusing JavaScript's lexical scoping with dynamic scoping.",
+      "topic": "JavaScript - Closures",
+      "difficulty": "medium"
     }
   ]
 }
