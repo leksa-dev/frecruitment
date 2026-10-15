@@ -7,6 +7,15 @@ import quizData from "./quiz.json";
 import { isCodingQuestion, type Question, type QuestionTypeFilter, type QuizAnswer, type QuizMode, type Screen } from "./types";
 
 const allQuestions = quizData.quiz as Question[];
+const questionsById = new Map(allQuestions.map((q) => [q.id, q]));
+
+/**
+ * A quiz in progress is restored from localStorage with copies of its questions.
+ * Use the current version of each one (fixed typos, reworded prompts) instead;
+ * a question no longer in quiz.json keeps its saved copy so positions don't shift.
+ */
+const refreshSavedQuestions = (saved: Question[]): Question[] =>
+  saved.map((q) => questionsById.get(q.id) ?? q);
 
 const STORAGE_KEY = "quiz-state";
 
@@ -41,8 +50,8 @@ function App() {
   const [userAnswers, setUserAnswers] = useState<QuizAnswer[]>(
     savedState?.userAnswers || []
   );
-  const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>(
-    savedState?.shuffledQuestions || []
+  const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>(() =>
+    refreshSavedQuestions(savedState?.shuffledQuestions || [])
   );
 
   const quizQuestions = shuffledQuestions;
