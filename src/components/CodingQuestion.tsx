@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from "react";
+import PromptText from "./PromptText";
 import type { CodingQuestion as CodingQuestionData, CodingVerdict } from "../types";
 
 // CodeMirror lives in its own chunk, loaded the first time a coding task is shown.
@@ -19,10 +20,10 @@ export default function CodingQuestion({ question, code, onCodeChange, verdict, 
 
   return (
     <div className="coding-question">
-      <h2 className="question-text">{question.prompt}</h2>
       <p className="question-topic">
         {question.topic} · <span className="coding-language">{LANGUAGE_LABELS[question.language]}</span>
       </p>
+      <PromptText text={question.prompt} />
 
       <Suspense fallback={<div className="code-editor loading">Loading editor…</div>}>
         <CodeEditor value={code} language={question.language} onChange={onCodeChange} ariaLabel="Your solution" />
