@@ -59,4 +59,14 @@ describe("App - question type filter", () => {
     start("All Questions");
     expect(screen.getByText("Question 1 of 2")).toBeInTheDocument();
   });
+
+  it("restores a quiz in progress with the current text of its questions", () => {
+    const stale = { id: 2, type: "coding", prompt: "OLD wording of the task", language: "tsx", starterCode: "", referenceSolution: "x", rubric: ["x"], topic: "React - Hooks", difficulty: "medium" };
+    const removed = { ...stale, id: 99, prompt: "A task that was removed from quiz.json" };
+    localStorage.setItem("quiz-state", JSON.stringify({ currentScreen: "quiz", quizMode: "all", userAnswers: [], shuffledQuestions: [stale, removed] }));
+    render(<App />);
+    expect(screen.getByText("Question 1 of 2")).toBeInTheDocument();
+    expect(screen.getByText("Write a useToggle hook.")).toBeInTheDocument();
+    expect(screen.queryByText("OLD wording of the task")).not.toBeInTheDocument();
+  });
 });
