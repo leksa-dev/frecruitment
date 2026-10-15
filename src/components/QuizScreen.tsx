@@ -4,6 +4,7 @@ import {
   isCodingAnswer,
   isCodingQuestion,
   type CodingVerdict,
+  type GradeResult,
   type McqQuestion,
   type Question,
   type QuizAnswer,
@@ -21,6 +22,8 @@ const QUIZ_PROGRESS_KEY = "quiz-progress";
 interface CodingDraft {
   code: string;
   verdict: CodingVerdict | null;
+  /** AI grade of exactly this code; editing the code drops it. */
+  grade?: GradeResult | null;
 }
 
 interface QuizProgress {
@@ -100,6 +103,7 @@ export default function QuizScreen({
         verdict: codingDraft.verdict,
         isCorrect: codingDraft.verdict === "pass",
         topic: currentQuestion.topic,
+        ...(codingDraft.grade ? { grade: codingDraft.grade } : {}),
       };
     } else {
       if (!selectedAnswer) return;
@@ -149,7 +153,7 @@ export default function QuizScreen({
           const previousAnswer = prevAnswers[prevAnswers.length - 1];
           if (isCodingAnswer(previousAnswer)) {
             setSelectedAnswer(null);
-            setCodingDraft({ code: previousAnswer.code, verdict: previousAnswer.verdict });
+            setCodingDraft({ code: previousAnswer.code, verdict: previousAnswer.verdict, grade: previousAnswer.grade ?? null });
           } else {
             setSelectedAnswer(previousAnswer.selectedAnswer);
             setCodingDraft(null);
@@ -270,9 +274,16 @@ export default function QuizScreen({
               key={currentQuestion.id}
               question={currentQuestion}
               code={code}
-              onCodeChange={(next) => setCodingDraft((d) => ({ code: next, verdict: d?.verdict ?? null }))}
+              onCodeChange={(next) =>
+                // A grade belongs to the graded code: editing it means checking again.
+                setCodingDraft((d) => (d?.grade ? { code: next, verdict: null, grade: null } : { code: next, verdict: d?.verdict ?? null }))
+              }
               verdict={codingDraft?.verdict ?? null}
-              onVerdict={(verdict) => setCodingDraft((d) => ({ code: d?.code ?? currentQuestion.starterCode, verdict }))}
+              onVerdict={(verdict) => setCodingDraft((d) => ({ code: d?.code ?? currentQuestion.starterCode, verdict, grade: null }))}
+              grade={codingDraft?.grade ?? null}
+              onGrade={(grade) =>
+                setCodingDraft((d) => ({ code: d?.code ?? currentQuestion.starterCode, verdict: grade.verdict === "pass" ? "pass" : "fail", grade }))
+              }
             />
             <NextButton disabled={!canAdvance} isLast={currentQuestionIndex === questions.length - 1} onClick={handleNext} />
           </>

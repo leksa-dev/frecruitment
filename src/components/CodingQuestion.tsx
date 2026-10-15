@@ -1,6 +1,8 @@
 import { lazy, Suspense, useState } from "react";
+import GradePanel from "./GradePanel";
 import PromptText from "./PromptText";
-import type { CodingQuestion as CodingQuestionData, CodingVerdict } from "../types";
+import { GRADER_URL, GradeError, gradeSolution } from "../api/grade";
+import type { CodingQuestion as CodingQuestionData, CodingVerdict, GradeResult } from "../types";
 
 // CodeMirror lives in its own chunk, loaded the first time a coding task is shown.
 const CodeEditor = lazy(() => import("./CodeEditor"));
@@ -11,12 +13,31 @@ interface CodingQuestionProps {
   onCodeChange: (code: string) => void;
   verdict: CodingVerdict | null;
   onVerdict: (verdict: CodingVerdict) => void;
+  grade: GradeResult | null;
+  onGrade: (grade: GradeResult) => void;
 }
 
 const LANGUAGE_LABELS = { javascript: "JavaScript", typescript: "TypeScript", tsx: "TSX" } as const;
 
-export default function CodingQuestion({ question, code, onCodeChange, verdict, onVerdict }: CodingQuestionProps) {
+export default function CodingQuestion({ question, code, onCodeChange, verdict, onVerdict, grade, onGrade }: CodingQuestionProps) {
   const [showSolution, setShowSolution] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [gradeError, setGradeError] = useState<string | null>(null);
+
+  // Without a grader, or when it fails, the user assesses the solution themselves.
+  const selfAssess = !GRADER_URL || gradeError !== null;
+
+  const check = async () => {
+    setChecking(true);
+    setGradeError(null);
+    try {
+      onGrade(await gradeSolution(question, code));
+    } catch (err) {
+      setGradeError(err instanceof GradeError ? err.message : "The AI grader failed.");
+    } finally {
+      setChecking(false);
+    }
+  };
 
   return (
     <div className="coding-question">
@@ -38,6 +59,18 @@ export default function CodingQuestion({ question, code, onCodeChange, verdict, 
         </button>
       </div>
 
+      {GRADER_URL && (
+        <button className="check-button" onClick={check} disabled={checking}>
+          {checking ? "Checking…" : grade ? "Check again with AI" : "Check with AI"}
+        </button>
+      )}
+      {gradeError && (
+        <p className="grade-error" role="alert">
+          {gradeError} Assess your solution yourself below.
+        </p>
+      )}
+      {grade && <GradePanel grade={grade} />}
+
       {showSolution && (
         <div className="explanation-box reference-solution">
           <Suspense fallback={<pre>{question.referenceSolution}</pre>}>
@@ -56,14 +89,16 @@ export default function CodingQuestion({ question, code, onCodeChange, verdict, 
         </div>
       )}
 
-      <div className="self-assessment" role="group" aria-label="How did it go?">
-        <button className={`option-button ${verdict === "pass" ? "selected" : ""}`} onClick={() => onVerdict("pass")}>
-          ✓ Solved it
-        </button>
-        <button className={`option-button ${verdict === "fail" ? "selected" : ""}`} onClick={() => onVerdict("fail")}>
-          ✗ Not yet
-        </button>
-      </div>
+      {selfAssess && (
+        <div className="self-assessment" role="group" aria-label="How did it go?">
+          <button className={`option-button ${verdict === "pass" ? "selected" : ""}`} onClick={() => onVerdict("pass")}>
+            ✓ Solved it
+          </button>
+          <button className={`option-button ${verdict === "fail" ? "selected" : ""}`} onClick={() => onVerdict("fail")}>
+            ✗ Not yet
+          </button>
+        </div>
+      )}
     </div>
   );
 }

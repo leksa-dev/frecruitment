@@ -1,3 +1,4 @@
+import GradePanel from "./GradePanel";
 import PromptText from "./PromptText";
 import { isCodingAnswer, type CodingAnswer, type QuizAnswer, type UserAnswer } from "../types";
 
@@ -18,6 +19,9 @@ export default function ResultsScreen({
   const solvedTasks = codingAnswers.filter((a) => a.isCorrect).length;
   const unsolvedTasks = codingAnswers.filter((a) => !a.isCorrect);
   const hasMcq = answers.length > 0;
+  const gradedCount = codingAnswers.filter((a) => a.grade).length;
+  const howGraded =
+    gradedCount === 0 ? "self-assessed" : gradedCount === codingAnswers.length ? "AI-graded" : "AI-graded and self-assessed";
 
   const correctAnswers = answers.filter((a) => a.isCorrect).length;
   const totalQuestions = answers.length;
@@ -62,7 +66,7 @@ export default function ResultsScreen({
     text += `\n${'='.repeat(80)}\n\n`;
 
     if (codingAnswers.length > 0) {
-      text += `Live coding: ${solvedTasks}/${codingAnswers.length} solved (self-assessed)\n\n`;
+      text += `Live coding: ${solvedTasks}/${codingAnswers.length} solved (${howGraded})\n\n`;
     }
 
     wrongAnswers.forEach((answer, index) => {
@@ -77,6 +81,11 @@ export default function ResultsScreen({
     unsolvedTasks.forEach((task, index) => {
       text += `Coding task ${index + 1}:\n${task.prompt}\n\n`;
       text += `Your code:\n${task.code}\n\n`;
+      if (task.grade) {
+        text += `AI grade: ${task.grade.score}/100 (${task.grade.verdict})\n${task.grade.feedback}\n`;
+        task.grade.issues.forEach((issue) => (text += `- ${issue}\n`));
+        text += `\n`;
+      }
       text += `Reference solution:\n${task.referenceSolution}\n`;
       text += `\n${'-'.repeat(80)}\n\n`;
     });
@@ -109,7 +118,7 @@ export default function ResultsScreen({
         )}
         {codingAnswers.length > 0 && (
           <p className="coding-score">
-            Live coding: <strong>{solvedTasks} / {codingAnswers.length}</strong> solved (self-assessed)
+            Live coding: <strong>{solvedTasks} / {codingAnswers.length}</strong> solved ({howGraded})
           </p>
         )}
       </div>
@@ -174,6 +183,7 @@ export default function ResultsScreen({
             {unsolvedTasks.map((task) => (
               <div key={`coding-${task.questionId}`} className="wrong-answer-item coding-review">
                 <PromptText text={task.prompt} className="coding-prompt wrong-answer-question" />
+                {task.grade && <GradePanel grade={task.grade} />}
                 <div className="answer-comparison">
                   <div className="your-answer incorrect">
                     <strong>Your code:</strong>

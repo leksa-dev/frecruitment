@@ -58,7 +58,16 @@ export interface UserAnswer {
 
 export type CodingVerdict = 'pass' | 'fail';
 
-/** Result of a coding task (self-assessed for now). */
+/** AI grade of a coding task (from the grader Worker). */
+export interface GradeResult {
+  verdict: 'pass' | 'partial' | 'fail';
+  score: number;
+  feedback: string;
+  issues: string[];
+  criteria: { criterion: string; met: boolean }[];
+}
+
+/** Result of a coding task: AI-graded, or self-assessed when the grader is unavailable. */
 export interface CodingAnswer {
   kind: 'coding';
   questionId: number;
@@ -68,6 +77,8 @@ export interface CodingAnswer {
   verdict: CodingVerdict;
   isCorrect: boolean;
   topic: string;
+  /** Present when the AI graded the task; otherwise the verdict is self-assessed. */
+  grade?: GradeResult;
 }
 
 export type QuizAnswer = UserAnswer | CodingAnswer;
