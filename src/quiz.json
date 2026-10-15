@@ -4863,6 +4863,135 @@
       "explanation": "A function's outer scope depends on where the function is defined, not where it is called. `show` was defined at the top level, so its closure points to the global `x`, and the `x` inside `run` does not affect it. Answering 'local' means confusing JavaScript's lexical scoping with dynamic scoping.",
       "topic": "JavaScript - Closures",
       "difficulty": "medium"
+    },
+    {
+      "id": 347,
+      "question": "In TypeScript (strict mode), what happens with this code?\nconst data: unknown = JSON.parse(input);\nconsole.log(data.name.toUpperCase());",
+      "options": {
+        "A": "It compiles because `JSON.parse` output is always treated as `any`",
+        "B": "It fails to compile because `JSON.parse` can only return a `string`",
+        "C": "It fails to compile because you can't access properties on `unknown` before narrowing it",
+        "D": "It compiles, and a runtime error occurs only if `name` is missing"
+      },
+      "correctAnswer": "C",
+      "explanation": "`unknown` accepts any value, but TypeScript won't let you access properties or call methods on it until you narrow it, for example with `typeof`, `in`, `instanceof` or a custom `value is X` type guard. If the value were typed `any`, the code would compile and could crash at runtime. That is exactly why `unknown` is the safer choice for API responses, `JSON.parse` results and `catch (e)`.",
+      "topic": "TypeScript - Types",
+      "difficulty": "medium"
+    },
+    {
+      "id": 348,
+      "question": "A Next.js page uses ISR with `revalidate: 60`. The cached page is 5 minutes old. What happens when the next request arrives?",
+      "options": {
+        "A": "The page switches to SSR for good and is rendered on every request",
+        "B": "Only the parts of the page whose data changed are re-rendered and merged in",
+        "C": "The user gets the stale page, and regeneration of the whole page starts in the background",
+        "D": "The request waits while the page is regenerated, then gets fresh HTML"
+      },
+      "correctAnswer": "C",
+      "explanation": "ISR follows the stale-while-revalidate model. The first request after the revalidate window expires is served the cached (stale) page right away, and that request triggers a background regeneration of the entire static page. Later visitors get the new version. ISR does not patch fragments of a page, and it does not make the user wait for the regeneration.",
+      "topic": "Next.js - Rendering",
+      "difficulty": "medium"
+    },
+    {
+      "id": 349,
+      "question": "A Next.js App Router e-commerce site caches product data with `fetch(url, { next: { tags: ['products'] } })`. An editor updates a product in the CMS. What is the standard way to refresh the cache right away?",
+      "options": {
+        "A": "A CMS webhook calls a Route Handler that runs `revalidateTag('products')`",
+        "B": "Set `cache: 'no-store'` on the fetch so the CMS can push new data",
+        "C": "Call `router.refresh()` from the CMS webhook to clear the server cache",
+        "D": "Redeploy the app, because tagged fetches are only refreshed at build time"
+      },
+      "correctAnswer": "A",
+      "explanation": "On-demand revalidation uses `revalidateTag()` or `revalidatePath()`, called from a Route Handler or a Server Action. The CMS triggers it with a webhook after content changes, and every fetch tagged 'products' is invalidated. `router.refresh()` is a client-side router API that a webhook can't call. Switching to `no-store` would turn off caching completely instead of refreshing it on demand.",
+      "topic": "Next.js - App Router",
+      "difficulty": "medium"
+    },
+    {
+      "id": 350,
+      "question": "You're adding an optimistic 'like' mutation with React Query. Which setup correctly handles an API failure?",
+      "options": {
+        "A": "In `onMutate`, update the cache. In `onError`, call `refetch` and leave the optimistic value until it returns",
+        "B": "In `onSuccess`, update the cache. In `onError`, disable the button so the user can't retry",
+        "C": "In `onSettled`, update the cache. In `onError`, throw the error so React Query reverts the cache by itself",
+        "D": "In `onMutate`, snapshot and update the cache. In `onError`, restore the snapshot. In `onSettled`, invalidate the query"
+      },
+      "correctAnswer": "D",
+      "explanation": "An optimistic update changes the UI before the server confirms it, so you need a way to undo it. `onMutate` saves the previous cache state and applies the change. `onError` puts the snapshot back, and you can show a toast there too. `onSettled` invalidates the query so it syncs with the server. React Query does not roll back optimistic cache edits on its own. Disabling the button prevents double clicks, but that is a separate concern from rollback.",
+      "topic": "React - React Query",
+      "difficulty": "medium"
+    },
+    {
+      "id": 351,
+      "question": "How does the browser pick an image in this markup?\n<picture>\n  <source type=\"image/avif\" srcset=\"a.avif\">\n  <source type=\"image/webp\" srcset=\"a.webp\">\n  <img src=\"a.jpg\" alt=\"Shoe\">\n</picture>",
+      "options": {
+        "A": "It uses the first `<source>` whose type it supports, or falls back to the `<img>`",
+        "B": "It always uses the `<img>` src, and the `<source>` elements are only preload hints",
+        "C": "It picks the format with the best quality, so the JPEG wins on high-DPI screens",
+        "D": "It downloads all three files and shows the smallest one"
+      },
+      "correctAnswer": "A",
+      "explanation": "The browser checks the `<source>` elements in order and uses the first one with a supported `type`, so the AVIF file is listed first. If no source matches, the `<img>` src is the fallback. Only one file is downloaded. The `<img>` element is still required, because it renders the chosen image and carries `alt`, `width`/`height` and `loading`.",
+      "topic": "Performance - Optimization",
+      "difficulty": "easy"
+    },
+    {
+      "id": 352,
+      "question": "CrUX field data for a product page shows LCP 2.1 s, INP 350 ms and CLS 0.05. How does the page do on Core Web Vitals?",
+      "options": {
+        "A": "It passes all three, because INP is only a diagnostic metric",
+        "B": "It fails on INP, because the 'good' limit is 200 ms",
+        "C": "It fails on LCP, because the 'good' limit is 2.0 s",
+        "D": "It fails on CLS, because the 'good' limit is 0.01"
+      },
+      "correctAnswer": "B",
+      "explanation": "The current Core Web Vitals are LCP (good at 2.5 s or less), INP (good at 200 ms or less, replacing FID) and CLS (good at 0.1 or less). INP at 350 ms is above the limit, while LCP and CLS are within it. These field values (CrUX) are the ones that count for search ranking, not Lighthouse lab scores.",
+      "topic": "Performance - Web Vitals",
+      "difficulty": "hard"
+    },
+    {
+      "id": 353,
+      "question": "How does this function send the chunks?\nasync function send(chunks, i = 0) {\n  if (i >= chunks.length) return;\n  await upload(chunks[i]);\n  return send(chunks, i + 1);\n}",
+      "options": {
+        "A": "One at a time, in order: each upload starts only after the previous one resolves",
+        "B": "Two at a time, because each recursive call runs alongside the current `await`",
+        "C": "All uploads start at once, like `Promise.all`, because the calls are async",
+        "D": "Only the first chunk is sent, because `return` stops the recursion after the `await`"
+      },
+      "correctAnswer": "A",
+      "explanation": "Each call waits for `upload` to finish before it calls itself with the next index, so the chunks are sent one after another, in order. Recursion stops when the index reaches the length of the array. This behaves like `for...of` with `await`. `Promise.all` on the mapped uploads would run them all in parallel. A rejected upload stops the chain unless you catch it and retry that chunk.",
+      "topic": "JavaScript - async/await",
+      "difficulty": "medium"
+    },
+    {
+      "id": 354,
+      "question": "Why can't you use styled-components directly in a Next.js App Router Server Component?",
+      "options": {
+        "A": "styled-components only works with the Pages Router's `_document` file and has no App Router support",
+        "B": "Server Components can't import npm packages that contain template literals",
+        "C": "It is a runtime CSS-in-JS library that needs React context and browser JS, so it requires 'use client'",
+        "D": "Next.js strips every `<style>` tag from server-rendered HTML for security reasons"
+      },
+      "correctAnswer": "C",
+      "explanation": "styled-components and Emotion create styles at runtime and rely on React context. Server Components can't use context and don't run in the browser, so these components must be marked 'use client', and SSR also needs a style registry. Zero-runtime options such as CSS Modules, Tailwind, vanilla-extract, Panda CSS and Linaria work in Server Components because they compile to static CSS at build time.",
+      "topic": "CSS - Styling Approaches",
+      "difficulty": "medium"
+    },
+    {
+      "id": 355,
+      "type": "coding",
+      "prompt": "Implement `sendInChunks` with recursion, not a loop. It uploads a large array to an API in sequential chunks.\n\nSignature:\nsendInChunks<T>(items: T[], chunkSize: number, send: (chunk: T[]) => Promise<void>, retries?: number): Promise<number>\n\nRequirements:\n- Split `items` into consecutive chunks of up to `chunkSize` elements. The last chunk may be smaller.\n- Send the chunks one after another: the next `send` call starts only after the previous promise resolves. Never run two `send` calls at the same time.\n- Write the iteration as an async function that sends one chunk, `await`s it and then calls itself for the next start index. Stop when the index reaches the end of the array. Do not use `for`, `while`, `forEach`, `reduce` or `Promise.all`.\n- Retry per chunk: if `send` rejects for a chunk, retry that same chunk up to `retries` more times (default 2). If it still fails, stop and reject with the last error. Do not send any later chunks.\n- Resolve with the number of chunks sent successfully.\n- Edge cases: an empty `items` array resolves to 0 and never calls `send`. If `chunkSize < 1`, reject with a `RangeError`.\n\nExamples:\n- sendInChunks([1,2,3,4,5], 2, send) → send([1,2]), then send([3,4]), then send([5]); resolves to 3.\n- If send([3,4]) fails once and then succeeds (default retries = 2) → send is called 4 times in total; resolves to 3.\n- If send([3,4]) fails 3 times with retries = 2 → rejects with the third error; send([5]) is never called.",
+      "language": "typescript",
+      "starterCode": "export async function sendInChunks<T>(\n  items: T[],\n  chunkSize: number,\n  send: (chunk: T[]) => Promise<void>,\n  retries = 2,\n): Promise<number> {\n  // TODO: send chunks sequentially using recursion (no loops), with per-chunk retry\n  return 0;\n}\n",
+      "referenceSolution": "export async function sendInChunks<T>(\n  items: T[],\n  chunkSize: number,\n  send: (chunk: T[]) => Promise<void>,\n  retries = 2,\n): Promise<number> {\n  if (chunkSize < 1) throw new RangeError('chunkSize must be >= 1');\n\n  const sendWithRetry = async (chunk: T[], attemptsLeft: number): Promise<void> => {\n    try {\n      await send(chunk);\n    } catch (err) {\n      if (attemptsLeft <= 0) throw err;\n      return sendWithRetry(chunk, attemptsLeft - 1);\n    }\n  };\n\n  const sendFrom = async (start: number, sent: number): Promise<number> => {\n    if (start >= items.length) return sent; // base case\n    await sendWithRetry(items.slice(start, start + chunkSize), retries);\n    return sendFrom(start + chunkSize, sent + 1);\n  };\n\n  return sendFrom(0, 0);\n}\n",
+      "rubric": [
+        "Uses a recursive async function with a clear base case (start index >= items.length) and no for/while/forEach/reduce/Promise.all",
+        "Awaits each send call before recursing, so chunks are sent strictly one after another",
+        "Builds correct chunks with slice(start, start + chunkSize), including a smaller last chunk, and returns 0 without calling send for an empty array",
+        "Retries a failed chunk up to `retries` extra times, then rejects with the last error and never sends later chunks",
+        "Resolves with the number of chunks sent and rejects with a RangeError when chunkSize < 1"
+      ],
+      "topic": "JavaScript - async/await",
+      "difficulty": "medium"
     }
   ]
 }
