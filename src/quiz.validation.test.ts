@@ -3,6 +3,7 @@ import quizData from "./quiz.json";
 
 const LETTERS = ["A", "B", "C", "D"] as const;
 const DIFFICULTIES = ["easy", "medium", "hard"];
+const LANGUAGES = ["javascript", "typescript", "tsx"];
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
@@ -25,31 +26,56 @@ export function findQuizProblems(quiz: unknown[]): string[] {
     else if (ids.has(q.id)) problems.push(`${label}: duplicate id (also at #${ids.get(q.id)})`);
     else ids.set(q.id, index);
 
-    if (!isNonEmptyString(q.question)) {
-      problems.push(`${label}: empty question`);
+    const isCoding = q.type === "coding";
+    if (q.type !== undefined && q.type !== "mcq" && !isCoding) problems.push(`${label}: type must be "mcq" or "coding"`);
+
+    // MCQ questions are identified by `question`, coding tasks by `prompt`.
+    const text = isCoding ? q.prompt : q.question;
+    if (!isNonEmptyString(text)) {
+      problems.push(`${label}: empty ${isCoding ? "prompt" : "question"}`);
     } else {
-      const key = normalizeQuestion(q.question);
+      const key = normalizeQuestion(text);
       if (texts.has(key)) problems.push(`${label}: duplicate question text (same as id ${String(texts.get(key))})`);
       else texts.set(key, q.id);
     }
 
-    const options = (q.options ?? {}) as Record<string, unknown>;
-    const extraKeys = Object.keys(options).filter((k) => !(LETTERS as readonly string[]).includes(k));
-    if (extraKeys.length) problems.push(`${label}: unexpected option keys ${extraKeys.join(", ")}`);
-    for (const letter of LETTERS) {
-      if (!isNonEmptyString(options[letter])) problems.push(`${label}: option ${letter} is empty`);
-    }
-
-    if (!(LETTERS as readonly unknown[]).includes(q.correctAnswer)) {
-      problems.push(`${label}: correctAnswer must be one of A–D`);
-    }
-    if (!isNonEmptyString(q.explanation)) problems.push(`${label}: empty explanation`);
     if (!isNonEmptyString(q.topic)) problems.push(`${label}: empty topic`);
     if (!DIFFICULTIES.includes(q.difficulty as string)) {
       problems.push(`${label}: difficulty must be easy, medium or hard`);
     }
+
+    if (isCoding) problems.push(...codingProblems(q).map((p) => `${label}: ${p}`));
+    else problems.push(...mcqProblems(q).map((p) => `${label}: ${p}`));
   });
 
+  return problems;
+}
+
+function mcqProblems(q: Record<string, unknown>): string[] {
+  const problems: string[] = [];
+  const options = (q.options ?? {}) as Record<string, unknown>;
+  const extraKeys = Object.keys(options).filter((k) => !(LETTERS as readonly string[]).includes(k));
+  if (extraKeys.length) problems.push(`unexpected option keys ${extraKeys.join(", ")}`);
+  for (const letter of LETTERS) {
+    if (!isNonEmptyString(options[letter])) problems.push(`option ${letter} is empty`);
+  }
+
+  if (!(LETTERS as readonly unknown[]).includes(q.correctAnswer)) {
+    problems.push("correctAnswer must be one of A–D");
+  }
+  if (!isNonEmptyString(q.explanation)) problems.push("empty explanation");
+  return problems;
+}
+
+function codingProblems(q: Record<string, unknown>): string[] {
+  const problems: string[] = [];
+  if (!LANGUAGES.includes(q.language as string)) problems.push("language must be javascript, typescript or tsx");
+  if (typeof q.starterCode !== "string") problems.push("starterCode must be a string");
+  if (!isNonEmptyString(q.referenceSolution)) problems.push("empty referenceSolution");
+  if (!Array.isArray(q.rubric) || q.rubric.length === 0 || !q.rubric.every(isNonEmptyString)) {
+    problems.push("rubric must be a non-empty list of criteria");
+  }
+  if ("options" in q || "correctAnswer" in q) problems.push("coding tasks have no options or correctAnswer");
   return problems;
 }
 
@@ -60,6 +86,18 @@ const validQuestion = {
   correctAnswer: "A",
   explanation: "A closure keeps access to variables of the scope it was created in.",
   topic: "JavaScript",
+  difficulty: "medium",
+};
+
+const validCodingTask = {
+  id: 2,
+  type: "coding",
+  prompt: "Write a debounce(fn, ms) function.",
+  language: "javascript",
+  starterCode: "function debounce(fn, ms) {\n}\n",
+  referenceSolution: "function debounce(fn, ms) {\n  let t;\n  return (...a) => {\n    clearTimeout(t);\n    t = setTimeout(() => fn(...a), ms);\n  };\n}\n",
+  rubric: ["Resets the timer on every call", "Passes the latest arguments"],
+  topic: "JavaScript - Timers",
   difficulty: "medium",
 };
 
@@ -102,5 +140,32 @@ describe("quiz.json validation", () => {
         expect.stringMatching(/difficulty/),
       ]),
     );
+  });
+
+  it("accepts a valid coding task next to multiple-choice questions", () => {
+    expect(findQuizProblems([validQuestion, validCodingTask, { ...validQuestion, id: 3, type: "mcq", question: "Q3?" }])).toEqual([]);
+  });
+
+  it("flags broken coding tasks", () => {
+    const broken = { ...validCodingTask, prompt: " ", language: "python", starterCode: undefined, referenceSolution: "", rubric: [] };
+    expect(findQuizProblems([broken])).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/empty prompt/),
+        expect.stringMatching(/language/),
+        expect.stringMatching(/starterCode/),
+        expect.stringMatching(/empty referenceSolution/),
+        expect.stringMatching(/rubric/),
+      ]),
+    );
+  });
+
+  it("flags unknown types and coding tasks carrying MCQ fields", () => {
+    expect(findQuizProblems([{ ...validQuestion, type: "essay" }])).toEqual([expect.stringMatching(/type must be/)]);
+    expect(findQuizProblems([{ ...validCodingTask, correctAnswer: "A" }])).toEqual([expect.stringMatching(/no options or correctAnswer/)]);
+  });
+
+  it("detects a coding task duplicating another one's prompt", () => {
+    const copy = { ...validCodingTask, id: 3, prompt: "write a DEBOUNCE(fn, ms) function" };
+    expect(findQuizProblems([validCodingTask, copy])).toEqual([expect.stringMatching(/duplicate question text \(same as id 2\)/)]);
   });
 });

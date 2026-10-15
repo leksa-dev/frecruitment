@@ -1,21 +1,41 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Question, UserAnswer } from "../types";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import CodingQuestion from "./CodingQuestion";
+import {
+  isCodingAnswer,
+  isCodingQuestion,
+  type CodingVerdict,
+  type McqQuestion,
+  type Question,
+  type QuizAnswer,
+} from "../types";
 
 interface QuizScreenProps {
   questions: Question[];
-  onQuizComplete: (answers: UserAnswer[]) => void;
+  onQuizComplete: (answers: QuizAnswer[]) => void;
   onReset: () => void;
 }
 
 const QUIZ_PROGRESS_KEY = "quiz-progress";
 
+/** Work in progress on the current coding task. */
+interface CodingDraft {
+  code: string;
+  verdict: CodingVerdict | null;
+}
+
 interface QuizProgress {
   currentQuestionIndex: number;
-  answers: UserAnswer[];
+  answers: QuizAnswer[];
   selectedAnswer: string | null;
+  codingDraft?: CodingDraft | null;
 }
 
 type OptionKey = "A" | "B" | "C" | "D";
+
+/** Keys typed into the code editor (or any text field) are not quiz shortcuts. */
+const isTypingTarget = (target: EventTarget | null) =>
+  target instanceof HTMLElement &&
+  (target.isContentEditable || target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.closest(".cm-editor") !== null);
 
 export default function QuizScreen({
   questions,
@@ -40,12 +60,18 @@ export default function QuizScreen({
   const [selectedAnswer, setSelectedAnswer] = useState<OptionKey | null>(
     (savedProgress?.selectedAnswer as OptionKey) || null
   );
-  const [answers, setAnswers] = useState<UserAnswer[]>(
+  const [answers, setAnswers] = useState<QuizAnswer[]>(
     savedProgress?.answers || []
+  );
+  const [codingDraft, setCodingDraft] = useState<CodingDraft | null>(
+    savedProgress?.codingDraft ?? null
   );
   const [showExplanation, setShowExplanation] = useState(false);
 
   const currentQuestion = questions[currentQuestionIndex];
+  const codingQuestion = isCodingQuestion(currentQuestion) ? currentQuestion : null;
+  const code = codingDraft?.code ?? codingQuestion?.starterCode ?? "";
+  const canAdvance = codingQuestion ? codingDraft?.verdict != null : selectedAnswer !== null;
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
   // Shuffle options for current question
@@ -62,18 +88,32 @@ export default function QuizScreen({
   };
 
   const handleNext = useCallback(() => {
-    if (!selectedAnswer) return;
-
-    const newAnswer: UserAnswer = {
-      questionId: currentQuestion.id,
-      question: currentQuestion.question,
-      options: currentQuestion.options,
-      selectedAnswer,
-      correctAnswer: currentQuestion.correctAnswer,
-      explanation: currentQuestion.explanation,
-      isCorrect: selectedAnswer === currentQuestion.correctAnswer,
-      topic: currentQuestion.topic,
-    };
+    let newAnswer: QuizAnswer;
+    if (isCodingQuestion(currentQuestion)) {
+      if (!codingDraft?.verdict) return;
+      newAnswer = {
+        kind: "coding",
+        questionId: currentQuestion.id,
+        prompt: currentQuestion.prompt,
+        code: codingDraft.code,
+        referenceSolution: currentQuestion.referenceSolution,
+        verdict: codingDraft.verdict,
+        isCorrect: codingDraft.verdict === "pass",
+        topic: currentQuestion.topic,
+      };
+    } else {
+      if (!selectedAnswer) return;
+      newAnswer = {
+        questionId: currentQuestion.id,
+        question: currentQuestion.question,
+        options: currentQuestion.options,
+        selectedAnswer,
+        correctAnswer: currentQuestion.correctAnswer,
+        explanation: currentQuestion.explanation,
+        isCorrect: selectedAnswer === currentQuestion.correctAnswer,
+        topic: currentQuestion.topic,
+      };
+    }
 
     setAnswers((prevAnswers) => {
       const updatedAnswers = [...prevAnswers, newAnswer];
@@ -81,6 +121,7 @@ export default function QuizScreen({
       if (currentQuestionIndex < questions.length - 1) {
         setCurrentQuestionIndex(currentQuestionIndex + 1);
         setSelectedAnswer(null);
+        setCodingDraft(null);
         setShowExplanation(false);
       } else {
         onQuizComplete(updatedAnswers);
@@ -90,6 +131,7 @@ export default function QuizScreen({
     });
   }, [
     selectedAnswer,
+    codingDraft,
     currentQuestion,
     currentQuestionIndex,
     questions.length,
@@ -105,10 +147,17 @@ export default function QuizScreen({
       setAnswers((prevAnswers) => {
         if (prevAnswers.length > 0) {
           const previousAnswer = prevAnswers[prevAnswers.length - 1];
-          setSelectedAnswer(previousAnswer.selectedAnswer);
+          if (isCodingAnswer(previousAnswer)) {
+            setSelectedAnswer(null);
+            setCodingDraft({ code: previousAnswer.code, verdict: previousAnswer.verdict });
+          } else {
+            setSelectedAnswer(previousAnswer.selectedAnswer);
+            setCodingDraft(null);
+          }
           return prevAnswers.slice(0, -1); // Remove last answer
         }
         setSelectedAnswer(null);
+        setCodingDraft(null);
         return prevAnswers;
       });
     }
@@ -120,9 +169,10 @@ export default function QuizScreen({
       currentQuestionIndex,
       answers,
       selectedAnswer,
+      codingDraft,
     };
     localStorage.setItem(QUIZ_PROGRESS_KEY, JSON.stringify(progress));
-  }, [currentQuestionIndex, answers, selectedAnswer]);
+  }, [currentQuestionIndex, answers, selectedAnswer, codingDraft]);
 
   // Clear progress when quiz completes
   useEffect(() => {
@@ -139,7 +189,18 @@ export default function QuizScreen({
   // Keyboard navigation
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
+      if (isTypingTarget(event.target)) return;
       const key = event.key.toLowerCase();
+
+      // Coding tasks have no options or explanation: only Enter and Backspace apply.
+      if (codingQuestion) {
+        if (key === "enter") handleNext();
+        else if (key === "backspace") {
+          event.preventDefault();
+          handlePrevious();
+        }
+        return;
+      }
 
       // A, B, C, D or 1, 2, 3, 4 to select answer based on screen position
       if (key === "a" || key === "1") {
@@ -169,7 +230,7 @@ export default function QuizScreen({
 
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [handleNext, handlePrevious, shuffledOptions]);
+  }, [handleNext, handlePrevious, shuffledOptions, codingQuestion]);
 
   return (
     <div className="quiz-screen">
@@ -203,55 +264,93 @@ export default function QuizScreen({
       </div>
 
       <div className="question-container">
-        <h2 className="question-text">{currentQuestion.question}</h2>
-        <p className="question-topic">{currentQuestion.topic}</p>
-
-        <div className="options">
-          {shuffledOptions.map((key) => (
-            <button
-              key={key}
-              className={`option-button ${
-                selectedAnswer === key ? "selected" : ""
-              }`}
-              onClick={() => handleAnswerSelect(key)}
-            >
-              <span className="option-text">
-                {currentQuestion.options[key]}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        <button
-          className="next-button"
-          onClick={handleNext}
-          disabled={!selectedAnswer}
-        >
-          {currentQuestionIndex < questions.length - 1
-            ? "Next Question"
-            : "Finish Quiz"}
-        </button>
-
-        {showExplanation && (
-          <div className="correct-answer-hint">
-            <strong>Correct Answer:</strong>{" "}
-            {currentQuestion.options[currentQuestion.correctAnswer]}
-          </div>
-        )}
-
-        <button
-          className="show-explanation-button"
-          onClick={() => setShowExplanation(!showExplanation)}
-        >
-          {showExplanation ? "Hide Explanation" : "Show Explanation"}
-        </button>
-
-        {showExplanation && (
-          <div className="explanation-box">
-            <p className="explanation-text">{currentQuestion.explanation}</p>
-          </div>
+        {isCodingQuestion(currentQuestion) ? (
+          <>
+            <CodingQuestion
+              key={currentQuestion.id}
+              question={currentQuestion}
+              code={code}
+              onCodeChange={(next) => setCodingDraft((d) => ({ code: next, verdict: d?.verdict ?? null }))}
+              verdict={codingDraft?.verdict ?? null}
+              onVerdict={(verdict) => setCodingDraft((d) => ({ code: d?.code ?? currentQuestion.starterCode, verdict }))}
+            />
+            <NextButton disabled={!canAdvance} isLast={currentQuestionIndex === questions.length - 1} onClick={handleNext} />
+          </>
+        ) : (
+          <McqBody
+            question={currentQuestion}
+            shuffledOptions={shuffledOptions}
+            selectedAnswer={selectedAnswer}
+            onSelect={handleAnswerSelect}
+            showExplanation={showExplanation}
+            onToggleExplanation={() => setShowExplanation(!showExplanation)}
+            next={<NextButton disabled={!canAdvance} isLast={currentQuestionIndex === questions.length - 1} onClick={handleNext} />}
+          />
         )}
       </div>
     </div>
+  );
+}
+
+function NextButton({ disabled, isLast, onClick }: { disabled: boolean; isLast: boolean; onClick: () => void }) {
+  return (
+    <button className="next-button" onClick={onClick} disabled={disabled}>
+      {isLast ? "Finish Quiz" : "Next Question"}
+    </button>
+  );
+}
+
+function McqBody({
+  question,
+  shuffledOptions,
+  selectedAnswer,
+  onSelect,
+  showExplanation,
+  onToggleExplanation,
+  next,
+}: {
+  question: McqQuestion;
+  shuffledOptions: OptionKey[];
+  selectedAnswer: OptionKey | null;
+  onSelect: (key: OptionKey) => void;
+  showExplanation: boolean;
+  onToggleExplanation: () => void;
+  next: ReactNode;
+}) {
+  return (
+    <>
+      <h2 className="question-text">{question.question}</h2>
+      <p className="question-topic">{question.topic}</p>
+
+      <div className="options">
+        {shuffledOptions.map((key) => (
+          <button
+            key={key}
+            className={`option-button ${selectedAnswer === key ? "selected" : ""}`}
+            onClick={() => onSelect(key)}
+          >
+            <span className="option-text">{question.options[key]}</span>
+          </button>
+        ))}
+      </div>
+
+      {next}
+
+      {showExplanation && (
+        <div className="correct-answer-hint">
+          <strong>Correct Answer:</strong> {question.options[question.correctAnswer]}
+        </div>
+      )}
+
+      <button className="show-explanation-button" onClick={onToggleExplanation}>
+        {showExplanation ? "Hide Explanation" : "Show Explanation"}
+      </button>
+
+      {showExplanation && (
+        <div className="explanation-box">
+          <p className="explanation-text">{question.explanation}</p>
+        </div>
+      )}
+    </>
   );
 }

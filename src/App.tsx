@@ -4,16 +4,18 @@ import QuizScreen from "./components/QuizScreen";
 import ResultsScreen from "./components/ResultsScreen";
 import WelcomeScreen from "./components/WelcomeScreen";
 import quizData from "./quiz.json";
-import type { Question, QuizMode, Screen, UserAnswer } from "./types";
+import { isCodingQuestion, type Question, type QuestionTypeFilter, type QuizAnswer, type QuizMode, type Screen } from "./types";
+
+const allQuestions = quizData.quiz as Question[];
 
 const STORAGE_KEY = "quiz-state";
 
 interface SavedState {
   currentScreen: Screen;
   quizMode: QuizMode | null;
-  userAnswers: UserAnswer[];
+  userAnswers: QuizAnswer[];
   currentQuestionIndex: number;
-  answers: UserAnswer[];
+  answers: QuizAnswer[];
   shuffledQuestions?: Question[];
 }
 
@@ -36,7 +38,7 @@ function App() {
   const [quizMode, setQuizMode] = useState<QuizMode | null>(
     savedState?.quizMode || null
   );
-  const [userAnswers, setUserAnswers] = useState<UserAnswer[]>(
+  const [userAnswers, setUserAnswers] = useState<QuizAnswer[]>(
     savedState?.userAnswers || []
   );
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>(
@@ -45,18 +47,21 @@ function App() {
 
   const quizQuestions = shuffledQuestions;
 
-  const handleStartQuiz = (mode: QuizMode, topic?: string) => {
+  const handleStartQuiz = (mode: QuizMode, topic?: string, type: QuestionTypeFilter = "all") => {
     setQuizMode(mode);
     setCurrentScreen("quiz");
     setUserAnswers([]);
 
     // Filter questions based on mode and topic
+    const ofType = allQuestions.filter(
+      (q) => type === "all" || (type === "coding") === isCodingQuestion(q)
+    );
     const filtered =
       mode === "random"
-        ? quizData.quiz
+        ? ofType
         : topic
-        ? quizData.quiz.filter((q) => q.topic.startsWith(topic))
-        : quizData.quiz;
+        ? ofType.filter((q) => q.topic.startsWith(topic))
+        : ofType;
 
     // Fisher-Yates shuffle algorithm - stable and unbiased
     const shuffled = [...filtered];
@@ -67,13 +72,13 @@ function App() {
 
     // Set shuffled questions (only happens once when quiz starts)
     const finalQuestions = mode === "random" ? shuffled.slice(0, 25) : shuffled;
-    setShuffledQuestions(finalQuestions as Question[]);
+    setShuffledQuestions(finalQuestions);
 
     // Clear any previous quiz progress
     localStorage.removeItem("quiz-progress");
   };
 
-  const handleQuizComplete = (answers: UserAnswer[]) => {
+  const handleQuizComplete = (answers: QuizAnswer[]) => {
     setUserAnswers(answers);
     setCurrentScreen("results");
   };
