@@ -42,7 +42,7 @@ describe("App - question type filter", () => {
     fireEvent.change(screen.getByLabelText(/Question Type/i), { target: { value: "coding" } });
     start("All Questions");
     expect(screen.getByText("Question 1 of 1")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Write a useToggle hook.");
+    expect(screen.getByText("Write a useToggle hook.")).toBeInTheDocument();
   });
 
   it("starts a quiz with only multiple-choice questions", () => {

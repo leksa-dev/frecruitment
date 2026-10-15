@@ -40,7 +40,7 @@ describe("QuizScreen - coding tasks", () => {
 
   it("shows the task with the starter code in a code editor", async () => {
     renderQuiz([task]);
-    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Write a sum(a, b) function.");
+    expect(screen.getByText("Write a sum(a, b) function.")).toBeInTheDocument();
     expect(await editor()).toHaveTextContent("export function sum(a: number, b: number) {");
     expect(screen.queryByText("Show Explanation")).not.toBeInTheDocument();
   });

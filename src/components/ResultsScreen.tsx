@@ -1,3 +1,4 @@
+import PromptText from "./PromptText";
 import { isCodingAnswer, type CodingAnswer, type QuizAnswer, type UserAnswer } from "../types";
 
 interface ResultsScreenProps {
@@ -172,7 +173,7 @@ export default function ResultsScreen({
             ))}
             {unsolvedTasks.map((task) => (
               <div key={`coding-${task.questionId}`} className="wrong-answer-item coding-review">
-                <p className="wrong-answer-question">{task.prompt}</p>
+                <PromptText text={task.prompt} className="coding-prompt wrong-answer-question" />
                 <div className="answer-comparison">
                   <div className="your-answer incorrect">
                     <strong>Your code:</strong>

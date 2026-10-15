@@ -605,8 +605,57 @@ body {
 
 /* Responsive */
 /* Live coding tasks */
-.coding-question .question-text {
-  white-space: pre-wrap;
+.coding-question .question-topic {
+  margin-bottom: 14px;
+}
+
+.coding-prompt {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #333;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.coding-prompt p,
+.coding-prompt ul,
+.coding-prompt ol {
+  margin: 0 0 12px;
+}
+
+.coding-prompt ul,
+.coding-prompt ol {
+  padding-left: 22px;
+}
+
+.coding-prompt li {
+  margin-bottom: 4px;
+}
+
+.coding-prompt code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  background: #f0f4ff;
+  color: #4b3fa8;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.coding-prompt pre {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 0 0 12px;
+}
+
+.coding-prompt pre code {
+  background: none;
+  color: #1e293b;
+  padding: 0;
+  font-size: 0.88rem;
+  white-space: pre;
 }
 
 .coding-language {
