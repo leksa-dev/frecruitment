@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import QuizScreen from './QuizScreen';
-import type { Question } from '../types';
+import type { McqQuestion } from '../types';
 
 // Mock questions for testing
-const mockQuestions: Question[] = [
+const mockQuestions: McqQuestion[] = [
   {
     id: 1,
     question: 'What is React?',

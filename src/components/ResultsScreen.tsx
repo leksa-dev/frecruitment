@@ -1,16 +1,23 @@
-import type { UserAnswer } from "../types";
+import { isCodingAnswer, type CodingAnswer, type QuizAnswer, type UserAnswer } from "../types";
 
 interface ResultsScreenProps {
-  answers: UserAnswer[];
+  answers: QuizAnswer[];
   onRestart: () => void;
   isRandomMode?: boolean;
 }
 
 export default function ResultsScreen({
-  answers,
+  answers: allAnswers,
   onRestart,
   isRandomMode = false,
 }: ResultsScreenProps) {
+  // Coding tasks are scored separately from the multiple-choice questions.
+  const answers = allAnswers.filter((a): a is UserAnswer => !isCodingAnswer(a));
+  const codingAnswers = allAnswers.filter((a): a is CodingAnswer => isCodingAnswer(a));
+  const solvedTasks = codingAnswers.filter((a) => a.isCorrect).length;
+  const unsolvedTasks = codingAnswers.filter((a) => !a.isCorrect);
+  const hasMcq = answers.length > 0;
+
   const correctAnswers = answers.filter((a) => a.isCorrect).length;
   const totalQuestions = answers.length;
   const percentage = Math.round((correctAnswers / totalQuestions) * 100);
@@ -53,12 +60,23 @@ export default function ResultsScreen({
     text += `Date: ${new Date().toLocaleDateString()}\n`;
     text += `\n${'='.repeat(80)}\n\n`;
 
+    if (codingAnswers.length > 0) {
+      text += `Live coding: ${solvedTasks}/${codingAnswers.length} solved (self-assessed)\n\n`;
+    }
+
     wrongAnswers.forEach((answer, index) => {
       text += `Question ${index + 1}:\n`;
       text += `${answer.question}\n\n`;
       text += `Your Answer (${answer.selectedAnswer}): ${answer.options[answer.selectedAnswer]}\n`;
       text += `Correct Answer (${answer.correctAnswer}): ${answer.options[answer.correctAnswer]}\n\n`;
       text += `Explanation:\n${answer.explanation}\n`;
+      text += `\n${'-'.repeat(80)}\n\n`;
+    });
+
+    unsolvedTasks.forEach((task, index) => {
+      text += `Coding task ${index + 1}:\n${task.prompt}\n\n`;
+      text += `Your code:\n${task.code}\n\n`;
+      text += `Reference solution:\n${task.referenceSolution}\n`;
       text += `\n${'-'.repeat(80)}\n\n`;
     });
 
@@ -77,13 +95,22 @@ export default function ResultsScreen({
     <div className="results-screen">
       <div className="results-summary">
         <h1>Quiz Complete!</h1>
-        <div className="score-circle">
-          <div className="percentage">{percentage}%</div>
-          <div className="score-text">
-            {correctAnswers} / {totalQuestions} correct
-          </div>
-        </div>
-        <p className="score-message">{getScoreMessage()}</p>
+        {hasMcq && (
+          <>
+            <div className="score-circle">
+              <div className="percentage">{percentage}%</div>
+              <div className="score-text">
+                {correctAnswers} / {totalQuestions} correct
+              </div>
+            </div>
+            <p className="score-message">{getScoreMessage()}</p>
+          </>
+        )}
+        {codingAnswers.length > 0 && (
+          <p className="coding-score">
+            Live coding: <strong>{solvedTasks} / {codingAnswers.length}</strong> solved (self-assessed)
+          </p>
+        )}
       </div>
 
       {!isRandomMode && topicsNeedingReview.length > 0 && (
@@ -113,10 +140,10 @@ export default function ResultsScreen({
         </div>
       )}
 
-      {wrongAnswers.length > 0 && (
+      {(wrongAnswers.length > 0 || unsolvedTasks.length > 0) && (
         <div className="wrong-answers-section">
           <div className="wrong-answers-header">
-            <h2>Review Incorrect Answers ({wrongAnswers.length})</h2>
+            <h2>Review Incorrect Answers ({wrongAnswers.length + unsolvedTasks.length})</h2>
             <button className="export-button" onClick={exportWrongAnswers}>
               📄 Export to Text File
             </button>
@@ -143,11 +170,26 @@ export default function ResultsScreen({
                 </div>
               </div>
             ))}
+            {unsolvedTasks.map((task) => (
+              <div key={`coding-${task.questionId}`} className="wrong-answer-item coding-review">
+                <p className="wrong-answer-question">{task.prompt}</p>
+                <div className="answer-comparison">
+                  <div className="your-answer incorrect">
+                    <strong>Your code:</strong>
+                    <pre>{task.code}</pre>
+                  </div>
+                  <div className="correct-answer">
+                    <strong>Reference solution:</strong>
+                    <pre>{task.referenceSolution}</pre>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {wrongAnswers.length === 0 && (
+      {hasMcq && wrongAnswers.length === 0 && (
         <div className="perfect-score">
           <h2>🌟 Perfect Score! 🌟</h2>
           <p>You answered all questions correctly!</p>
