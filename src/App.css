@@ -698,6 +698,11 @@ body {
   min-height: 0;
 }
 
+/* Whatever ends the coding task (grade, solution, self-assessment) keeps its distance from Next. */
+.coding-question + .next-button {
+  margin-top: 20px;
+}
+
 .coding-actions {
   display: flex;
   gap: 12px;
@@ -781,7 +786,7 @@ body {
 }
 
 .grade-result {
-  margin: 16px 0 20px;
+  margin-top: 16px;
   padding: 16px 18px;
   border-radius: 12px;
   border-left: 5px solid;
