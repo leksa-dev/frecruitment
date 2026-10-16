@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import QuizScreen from "./QuizScreen";
 import ResultsScreen from "./ResultsScreen";
@@ -135,7 +135,8 @@ describe("QuizScreen - AI grading", () => {
     await typeInEditor("export const sum = (a: number, b: number) => a + b;");
     fireEvent.click(screen.getByText("Check with AI"));
     await screen.findByText("Correct and concise.");
-    expect(JSON.parse(localStorage.getItem("quiz-progress")!).codingDraft.grade).toEqual(passGrade);
+    // Progress is saved in an effect after the render that shows the grade.
+    await waitFor(() => expect(JSON.parse(localStorage.getItem("quiz-progress")!).codingDraft.grade).toEqual(passGrade));
   });
 });
 

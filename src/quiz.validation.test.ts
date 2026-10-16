@@ -67,8 +67,30 @@ function mcqProblems(q: Record<string, unknown>): string[] {
   return problems;
 }
 
-function codingProblems(q: Record<string, unknown>): string[] {
+/**
+ * Same limits as the pipeline (learning-pipeline src/shared/question.ts CODING_LIMITS)
+ * and the grader Worker: a task over them is skipped by the grader and rejected by the pipeline.
+ */
+const CODING_LIMITS = { prompt: 4000, code: 8000, criterion: 300, topic: 200, rubricItems: 8 };
+
+function codingLimitProblems(q: Record<string, unknown>): string[] {
   const problems: string[] = [];
+  const tooLong = (field: string, value: unknown, max: number) => {
+    if (typeof value === "string" && value.length > max) problems.push(`${field} longer than ${max} characters`);
+  };
+  tooLong("prompt", q.prompt, CODING_LIMITS.prompt);
+  tooLong("starterCode", q.starterCode, CODING_LIMITS.code);
+  tooLong("referenceSolution", q.referenceSolution, CODING_LIMITS.code);
+  tooLong("topic", q.topic, CODING_LIMITS.topic);
+  if (Array.isArray(q.rubric)) {
+    if (q.rubric.length > CODING_LIMITS.rubricItems) problems.push(`rubric has more than ${CODING_LIMITS.rubricItems} criteria`);
+    q.rubric.forEach((c, i) => tooLong(`rubric criterion ${i + 1}`, c, CODING_LIMITS.criterion));
+  }
+  return problems;
+}
+
+function codingProblems(q: Record<string, unknown>): string[] {
+  const problems: string[] = codingLimitProblems(q);
   if (!LANGUAGES.includes(q.language as string)) problems.push("language must be javascript, typescript or tsx");
   if (typeof q.starterCode !== "string") problems.push("starterCode must be a string");
   if (!isNonEmptyString(q.referenceSolution)) problems.push("empty referenceSolution");
@@ -155,6 +177,22 @@ describe("quiz.json validation", () => {
         expect.stringMatching(/starterCode/),
         expect.stringMatching(/empty referenceSolution/),
         expect.stringMatching(/rubric/),
+      ]),
+    );
+  });
+
+  it("flags coding tasks over the grader's size limits", () => {
+    const huge = {
+      ...validCodingTask,
+      prompt: "x".repeat(4001),
+      referenceSolution: "y".repeat(8001),
+      rubric: Array.from({ length: 9 }, (_, i) => `Criterion ${i}`),
+    };
+    expect(findQuizProblems([huge])).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/prompt longer than 4000/),
+        expect.stringMatching(/referenceSolution longer than 8000/),
+        expect.stringMatching(/more than 8 criteria/),
       ]),
     );
   });
