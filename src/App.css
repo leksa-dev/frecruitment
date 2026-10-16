@@ -751,14 +751,22 @@ body {
 .check-button {
   width: 100%;
   margin-top: 20px;
-  background: #1e293b;
-  color: white;
-  border: none;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+  color: #5a4fcf;
+  border: 2px solid #667eea;
   padding: 14px;
   border-radius: 12px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.check-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
 }
 
 .check-button:disabled {
@@ -773,7 +781,7 @@ body {
 }
 
 .grade-result {
-  margin-top: 16px;
+  margin: 16px 0 20px;
   padding: 16px 18px;
   border-radius: 12px;
   border-left: 5px solid;
