@@ -96,6 +96,39 @@ describe("QuizScreen - AI grading", () => {
     expect(answer.grade).toBeUndefined();
   });
 
+  it("ignores a grade for code that changed during the check", async () => {
+    let resolve!: (g: GradeResult) => void;
+    gradeSolution.mockReturnValue(new Promise<GradeResult>((r) => (resolve = r)));
+    renderQuiz();
+    await typeInEditor("export const sum = (a: number, b: number) => a + b;");
+    fireEvent.click(screen.getByText("Check with AI"));
+    await typeInEditor("export const sum = () => 0;");
+    await act(async () => resolve(passGrade));
+
+    expect(screen.queryByText("Correct and concise.")).not.toBeInTheDocument();
+    expect(screen.getByText(/The code changed during the check/)).toBeInTheDocument();
+    expect(screen.getByText("Finish Quiz")).toBeDisabled();
+  });
+
+  it("does not put a late grade on the next task", async () => {
+    const second: CodingQuestion = { ...task, id: 8, prompt: "Write a product(a, b) function." };
+    render(<QuizScreen questions={[task, second]} onQuizComplete={vi.fn()} onReset={vi.fn()} />);
+    gradeSolution.mockResolvedValueOnce(passGrade);
+    await typeInEditor("export const sum = (a: number, b: number) => a + b;");
+    fireEvent.click(screen.getByText("Check with AI"));
+    await screen.findByText("Correct and concise.");
+
+    let resolve!: (g: GradeResult) => void;
+    gradeSolution.mockReturnValueOnce(new Promise<GradeResult>((r) => (resolve = r)));
+    fireEvent.click(screen.getByText("Check again with AI"));
+    fireEvent.click(screen.getByText("Next Question"));
+    expect(await screen.findByText("Write a product(a, b) function.")).toBeInTheDocument();
+    await act(async () => resolve(partialGrade));
+
+    expect(screen.queryByText("Almost.")).not.toBeInTheDocument();
+    expect(screen.getByText("Finish Quiz")).toBeDisabled();
+  });
+
   it("keeps the grade in the saved progress", async () => {
     gradeSolution.mockResolvedValue(passGrade);
     renderQuiz();

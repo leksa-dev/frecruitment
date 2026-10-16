@@ -14,7 +14,8 @@ export class GradeError extends Error {
 
 const VERDICTS = ["pass", "partial", "fail"];
 
-function isGradeResult(value: unknown): value is GradeResult {
+/** Checked item by item: the grade comes from the network or from localStorage, and React can't render objects as text. */
+export function isGradeResult(value: unknown): value is GradeResult {
   const v = value as GradeResult;
   return (
     typeof v === "object" &&
@@ -23,7 +24,9 @@ function isGradeResult(value: unknown): value is GradeResult {
     typeof v.score === "number" &&
     typeof v.feedback === "string" &&
     Array.isArray(v.issues) &&
-    Array.isArray(v.criteria)
+    v.issues.every((i) => typeof i === "string") &&
+    Array.isArray(v.criteria) &&
+    v.criteria.every((c) => typeof c === "object" && c !== null && typeof c.criterion === "string" && typeof c.met === "boolean")
   );
 }
 

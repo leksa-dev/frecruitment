@@ -4,6 +4,7 @@ import QuizScreen from "./components/QuizScreen";
 import ResultsScreen from "./components/ResultsScreen";
 import WelcomeScreen from "./components/WelcomeScreen";
 import quizData from "./quiz.json";
+import { isSavedAnswer, isSavedQuestion, validItems } from "./savedState";
 import { isCodingQuestion, type Question, type QuestionTypeFilter, type QuizAnswer, type QuizMode, type Screen } from "./types";
 
 const allQuestions = quizData.quiz as Question[];
@@ -40,18 +41,21 @@ function App() {
   };
 
   const savedState = loadSavedState();
+  const savedQuestions = validItems(savedState?.shuffledQuestions, isSavedQuestion);
+  const savedScreen = savedState?.currentScreen;
+  // A quiz without its questions can't be resumed; start over instead.
+  const initialScreen: Screen =
+    savedScreen === "results" || (savedScreen === "quiz" && savedQuestions.length > 0) ? savedScreen : "welcome";
 
-  const [currentScreen, setCurrentScreen] = useState<Screen>(
-    savedState?.currentScreen || "welcome"
-  );
+  const [currentScreen, setCurrentScreen] = useState<Screen>(initialScreen);
   const [quizMode, setQuizMode] = useState<QuizMode | null>(
     savedState?.quizMode || null
   );
-  const [userAnswers, setUserAnswers] = useState<QuizAnswer[]>(
-    savedState?.userAnswers || []
+  const [userAnswers, setUserAnswers] = useState<QuizAnswer[]>(() =>
+    validItems(savedState?.userAnswers, isSavedAnswer)
   );
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>(() =>
-    refreshSavedQuestions(savedState?.shuffledQuestions || [])
+    refreshSavedQuestions(savedQuestions)
   );
 
   const quizQuestions = shuffledQuestions;
