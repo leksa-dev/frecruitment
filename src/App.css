@@ -694,6 +694,12 @@ body {
   color: #888;
 }
 
+.code-editor.editor-failed {
+  flex-direction: column;
+  padding: 20px;
+  text-align: center;
+}
+
 .code-editor.read-only .cm-editor {
   min-height: 0;
 }

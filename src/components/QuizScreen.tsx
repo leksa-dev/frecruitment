@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import CodingQuestion from "./CodingQuestion";
+import { isSavedAnswer, savedGrade, validItems } from "../savedState";
 import {
   isCodingAnswer,
   isCodingQuestion,
@@ -49,7 +50,20 @@ export default function QuizScreen({
   const loadProgress = (): QuizProgress | null => {
     try {
       const saved = localStorage.getItem(QUIZ_PROGRESS_KEY);
-      return saved ? JSON.parse(saved) : null;
+      const raw: unknown = saved ? JSON.parse(saved) : null;
+      if (typeof raw !== "object" || raw === null) return null;
+      const p = raw as Partial<Record<keyof QuizProgress, unknown>>;
+      const index = typeof p.currentQuestionIndex === "number" && p.currentQuestionIndex >= 0 && p.currentQuestionIndex < questions.length ? p.currentQuestionIndex : 0;
+      const draft = p.codingDraft as Partial<Record<keyof CodingDraft, unknown>> | null | undefined;
+      return {
+        currentQuestionIndex: index,
+        answers: validItems(p.answers, isSavedAnswer),
+        selectedAnswer: typeof p.selectedAnswer === "string" ? p.selectedAnswer : null,
+        codingDraft:
+          typeof draft === "object" && draft !== null && typeof draft.code === "string"
+            ? { code: draft.code, verdict: draft.verdict === "pass" || draft.verdict === "fail" ? draft.verdict : null, grade: savedGrade(draft.grade) }
+            : null,
+      };
     } catch {
       return null;
     }

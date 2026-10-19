@@ -96,6 +96,21 @@ describe('App - Integration Tests', () => {
     }
   });
 
+  it('starts over instead of crashing on a corrupted saved quiz', () => {
+    localStorage.setItem('quiz-state', JSON.stringify({ currentScreen: 'quiz', shuffledQuestions: [null, 'x'], userAnswers: [null] }));
+    localStorage.setItem('quiz-progress', JSON.stringify({ currentQuestionIndex: 99, answers: [null], codingDraft: { code: 5 } }));
+    render(<App />);
+    expect(screen.getByText(/Frontend Engineer Quiz/i)).toBeInTheDocument();
+  });
+
+  it('resumes a quiz whose saved progress is corrupted', () => {
+    const q = { id: 999001, question: 'Saved question?', options: { A: 'a', B: 'b', C: 'c', D: 'd' }, correctAnswer: 'A', explanation: '', topic: 'T', difficulty: 'easy' };
+    localStorage.setItem('quiz-state', JSON.stringify({ currentScreen: 'quiz', shuffledQuestions: [q] }));
+    localStorage.setItem('quiz-progress', JSON.stringify({ currentQuestionIndex: 99, answers: [null, { kind: 'coding' }], codingDraft: { code: 5 } }));
+    render(<App />);
+    expect(screen.getByText('Saved question?')).toBeInTheDocument();
+  });
+
   it('should save state to localStorage during quiz', () => {
     render(<App />);
 

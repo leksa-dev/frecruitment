@@ -60,8 +60,10 @@ export default function ResultsScreen({
 
   const exportWrongAnswers = () => {
     let text = `Frontend Engineer Quiz - Review Sheet\n`;
-    text += `Score: ${correctAnswers}/${totalQuestions} (${percentage}%)\n`;
-    text += `Incorrect Answers: ${wrongAnswers.length}\n`;
+    if (hasMcq) {
+      text += `Score: ${correctAnswers}/${totalQuestions} (${percentage}%)\n`;
+      text += `Incorrect Answers: ${wrongAnswers.length}\n`;
+    }
     text += `Date: ${new Date().toLocaleDateString()}\n`;
     text += `\n${'='.repeat(80)}\n\n`;
 
