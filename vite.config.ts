@@ -15,7 +15,7 @@ export default defineConfig({
         target: GRADER_ORIGIN,
         changeOrigin: true,
         rewrite: () => '/grade',
-        headers: { Origin: 'https://przemekleksa.github.io' },
+        headers: { Origin: 'https://leksa-dev.github.io' },
       },
     },
   },
